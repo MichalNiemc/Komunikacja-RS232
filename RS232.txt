@@ -1,0 +1,75 @@
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.STD_LOGIC_ARITH.ALL;
+use IEEE.STD_LOGIC_UNSIGNED.ALL;
+ 
+entity vhd is
+    Port (
+        clk_i : in std_logic;
+        TXD_o : out std_logic := '1';
+        RXD_i : in std_logic
+        );
+end vhd;
+ 
+architecture Behavioral of vhd is
+signal data : std_logic_vector(7 downto 0) := "00000000";
+begin
+process (clk_i)
+ 
+variable counter : integer range 0 to 5208 := 0;
+variable index : integer range -1 to 8 := 0;
+variable receive : boolean := false;
+variable send : boolean := false;
+variable half : boolean := false;
+ 
+begin
+ 
+if rising_edge(clk_i) then
+    counter := counter + 1;
+   
+    if (receive = false and RXD_i = '0' and send = false) then
+        counter := 0;
+        index := 0;
+        receive := true;
+    end if;
+   
+    if (receive = true and half = false and counter > 2000 and counter < 3000) then
+        half := true;
+        counter := 0;
+    end if;
+ 
+    if (receive = true) then
+        if (counter = 5208 and index < 8 and index > -1) then
+            data(index) <= RXD_i;
+            counter := 0;
+            index := index + 1;
+        elsif (counter = 5208 and index = 8) then
+            counter := 0;
+            index := -1;
+            send := true;
+            receive := false;
+            data <= data + x"20";
+            half := false;
+        end if;
+    end if;
+ 
+    if (send = true) then
+        if(index = -1) then
+            TXD_o <= '0';
+            index := index + 1;
+            counter := 0;
+        elsif(counter = 5208 and index < 8 and index > -1) then
+            TXD_o <= data(index);
+            counter := 0;
+            index := index + 1;
+        elsif (counter = 5208 and index = 8) then
+            TXD_o <= '1';
+            counter := 0;
+            index := 0;
+            send := false;
+        end if;
+    end if;
+ 
+end if;
+end process;
+end Behavioral;
